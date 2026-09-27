@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9487a546148a2074ca25ba2648970f01, type: 3}
+  m_Name: AgnesNpcSettings
+  m_EditorClassIdentifier: DynamicNpcs.Runtime::DynamicNpcs.DynamicNpcSettings
+  llmBackend: 1
+  llmBaseUrl: http://localhost:11434/v1
+  llmModel: gemma4
+  llamaServerPath: DynamicNPCs/llama-server/llama-server.exe
+  llmModelPath: C:/Users/didar/.lmstudio/models/lmstudio-community/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+  embeddedPort: 8090
+  gpuLayers: 99
+  contextSize: 8192
+  extraServerArgs: --jinja
+  embeddedStartupTimeoutSeconds: 180
+  llmTimeoutSeconds: 120
+  ttsBackend: 1
+  ttsBaseUrl: http://localhost:8000
+  ttsModelPath: DynamicNPCs/models/neutts-air-Q4_0.gguf
+  ttsServerPath: 
+  ttsPort: 8091
+  ttsGpuLayers: 50
+  ttsContextSize: 2048
+  ttsExtraServerArgs: --special
+  ttsMaxCodes: 1000
+  ttsTemperature: 1
+  ttsTopK: 50
+  neuCodecDecoder: {fileID: 5022602860645237092, guid: cb6c628fcd323e641bc54f65451d747f,
+    type: 3}
+  espeakPath: DynamicNPCs/espeak-ng/espeak-ng.exe
+  ttsTimeoutSeconds: 180
+  mapSpeakerPathsToWsl: 1
+  defaultLanguage: en
+  minChunkChars: 24
+  interSentencePause: 0.3
