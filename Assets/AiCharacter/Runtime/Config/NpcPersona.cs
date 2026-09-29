@@ -22,6 +22,9 @@ namespace DynamicNpcs
         [Tooltip("Optional shared world/lore context appended to the system prompt.")]
         public string worldContext = "";
 
+        [Tooltip("Optional knowledge base this NPC can draw on (retrieval-augmented generation).")]
+        public RagSourceAsset[] ragSources;
+
         [Tooltip("Voice used to speak this persona's lines.")]
         public NpcVoice voice;
 
@@ -40,13 +43,15 @@ namespace DynamicNpcs
         public string ResolveModel(DynamicNpcSettings settings)
             => string.IsNullOrWhiteSpace(modelOverride) ? settings.llmModel : modelOverride;
 
-        public virtual string BuildSystemPrompt()
+        public virtual string BuildSystemPrompt(string ragContext = "")
         {
             var sb = new StringBuilder();
             sb.Append("You are ").Append(npcName).Append(", a character in a video game.\n");
             sb.Append(personality.Trim());
             if (!string.IsNullOrWhiteSpace(worldContext))
                 sb.Append("\n\nWorld context:\n").Append(worldContext.Trim());
+            if (!string.IsNullOrWhiteSpace(ragContext))
+                sb.Append("\n\nRelevant knowledge for this reply:\n").Append(ragContext);
             sb.Append("\n\nRules: Stay in character at all times. ");
             sb.Append("Reply ONLY with the exact words ").Append(npcName).Append(" speaks aloud - ");
             sb.Append("no narration, no stage directions, no asterisks, no markdown, no emojis. ");

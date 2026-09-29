@@ -105,10 +105,14 @@ namespace DynamicNpcs
                 _history.Add(new ChatMessage("user", playerLine));
                 TrimHistory();
 
+                string ragContext = "";
+                if (settings.useRag && persona.ragSources != null && persona.ragSources.Length > 0)
+                    ragContext = await RagRetriever.RetrieveContextAsync(settings, persona.ragSources, playerLine, ct);
+
                 var request = new ChatRequest
                 {
                     model = persona.ResolveModel(settings),
-                    messages = BuildMessages(),
+                    messages = BuildMessages(ragContext),
                     temperature = persona.temperature,
                     max_tokens = persona.maxTokens,
                 };
@@ -230,12 +234,13 @@ namespace DynamicNpcs
                 throw new InvalidOperationException($"{name}: NpcDialogueAgent has no AudioSource.");
         }
 
-        private ChatMessage[] BuildMessages()
+        private ChatMessage[] BuildMessages(string ragContext = "")
         {
             var messages = new List<ChatMessage>(_history.Count + 1)
             {
-                new ChatMessage("system", persona.BuildSystemPrompt())
+                new ChatMessage("system", persona.BuildSystemPrompt(ragContext))
             };
+
             messages.AddRange(_history);
             return messages.ToArray();
         }

@@ -113,6 +113,34 @@ namespace DynamicNpcs
         [Tooltip("Language code sent to XTTS when a voice does not specify one.")]
         public string defaultLanguage = "en";
 
+        [Header("RAG (optional knowledge retrieval)")]
+        [Tooltip("Enable retrieval-augmented generation: relevant knowledge chunks are found and inserted into the prompt.")]
+        public bool useRag = false;
+
+        [Tooltip("Embedding GGUF model (e.g. nomic-embed-text). Relative paths resolve under StreamingAssets.")]
+        public string embeddingModelPath = "DynamicNPCs/models/nomic-embed-text-v1.5.Q8_0.gguf";
+
+        [Tooltip("Optional separate llama-server binary for embeddings. Empty = reuse the LLM's binary.")]
+        public string embeddingServerPath = "";
+
+        [Tooltip("Localhost port for the embedding server (must differ from the LLM and TTS ports).")]
+        public int embeddingPort = 8092;
+
+        [Tooltip("Embedding model layers offloaded to GPU. Embedding models are small; 99 is usually fine.")]
+        [Range(0, 99)] public int embeddingGpuLayers = 99;
+
+        [Tooltip("Context size for the embedding server. Should be >= the longest chunk you bake.")]
+        public int embeddingContextSize = 2048;
+
+        [Tooltip("Extra args for the embedding server (--embedding is added automatically).")]
+        public string embeddingExtraServerArgs = "";
+
+        [Tooltip("How many top-matching knowledge chunks to inject into the prompt per query.")]
+        [Min(1)] public int ragTopK = 3;
+
+        [Tooltip("Minimum cosine similarity for a RAG chunk to be included. Filters out irrelevant matches from small/unrelated sources so they don't clutter every prompt. 0 = no filtering.")]
+        [Range(0f, 1f)] public float ragMinScore = 0.3f;
+
         [Header("Speech pipeline")]
         [Tooltip("Minimum characters accumulated before a sentence chunk is sent to TTS. Larger = fewer, longer clips; smaller = lower latency but choppier prosody.")]
         [Min(1)] public int minChunkChars = 24;
@@ -128,6 +156,9 @@ namespace DynamicNpcs
 
         /// <summary>Root URL of the embedded NeuTTS server.</summary>
         public string EmbeddedTtsRootUrl => $"http://127.0.0.1:{ttsPort}";
+
+        /// <summary>Root URL of the embedded embedding server.</summary>
+        public string EmbeddedEmbeddingRootUrl => $"http://127.0.0.1:{embeddingPort}";
 
         /// <summary>The OpenAI-compatible base URL for whichever backend is active.</summary>
         public string ResolveLlmBaseUrl()

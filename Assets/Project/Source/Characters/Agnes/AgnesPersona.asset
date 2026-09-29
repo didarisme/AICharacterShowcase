@@ -29,6 +29,7 @@ MonoBehaviour:
     traditions and a modern world that no longer believes in monsters. She wanders
     between cities, enrolling in schools or taking odd jobs, less out of necessity
     and more to feel some semblance of a normal life she can never fully have."
+  ragSources: []
   voice: {fileID: 11400000, guid: 45117ec9478118a4b9b6dffa833a87b5, type: 2}
   modelOverride: 
   temperature: 0.8
