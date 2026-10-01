@@ -24,6 +24,7 @@ namespace DynamicNpcs.Editor
             await EmbeddedEmbeddingServer.EnsureRunningAsync(settings, ct);
 
             var rawChunks = ChunkTextWithOverlap(source.sourceFile.text, source.chunkChars, source.overlapChars);
+
             if (rawChunks.Count == 0)
                 throw new Exception($"RagSource '{source.name}' produced no chunks - is the source file empty?");
 
@@ -52,6 +53,7 @@ namespace DynamicNpcs.Editor
         {
             var result = new List<string>();
             int pos = 0;
+
             while (pos < text.Length)
             {
                 int len = Math.Min(chunkChars, text.Length - pos);
@@ -73,6 +75,7 @@ namespace DynamicNpcs.Editor
 
                 pos = Math.Max(pos + 1, end - overlapChars);
             }
+            
             return result;
         }
     }

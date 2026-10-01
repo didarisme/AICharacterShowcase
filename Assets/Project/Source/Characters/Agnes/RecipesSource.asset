@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f9f79b667f7314cb84a1a85f695fe5, type: 3}
+  m_Name: RecipesSource
+  m_EditorClassIdentifier: DynamicNpcs.Runtime::DynamicNpcs.RagSourceAsset
+  sourceFile: {fileID: 4900000, guid: 2fd4feb83335b1f4faf9492fc8199ee8, type: 3}
+  chunkChars: 1000
+  overlapChars: 150
+  topKOverride: 0

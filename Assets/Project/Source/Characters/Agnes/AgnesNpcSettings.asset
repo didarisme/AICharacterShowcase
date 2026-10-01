@@ -40,14 +40,15 @@ MonoBehaviour:
   ttsTimeoutSeconds: 180
   mapSpeakerPathsToWsl: 1
   defaultLanguage: en
-  useRag: 0
+  useRag: 1
+  useKeywordSearch: 1
   embeddingModelPath: DynamicNPCs/models/nomic-embed-text-v1.5.Q8_0.gguf
   embeddingServerPath: 
   embeddingPort: 8092
   embeddingGpuLayers: 99
   embeddingContextSize: 2048
   embeddingExtraServerArgs: 
-  ragTopK: 5
+  ragTopK: 10
   ragMinScore: 0.1
   minChunkChars: 24
   interSentencePause: 0.3

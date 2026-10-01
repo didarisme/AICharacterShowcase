@@ -114,8 +114,11 @@ namespace DynamicNpcs
         public string defaultLanguage = "en";
 
         [Header("RAG (optional knowledge retrieval)")]
-        [Tooltip("Enable retrieval-augmented generation: relevant knowledge chunks are found and inserted into the prompt.")]
+        [Tooltip("Enable retrieval-augmented generation via semantic (embedding) search: relevant knowledge chunks are found and inserted into the prompt.")]
         public bool useRag = false;
+
+        [Tooltip("Also run BM25 keyword search alongside semantic search and fuse the two rankings (hybrid search). Catches exact names/numbers/rare terms a chunk's averaged embedding can under-represent.")]
+        public bool useKeywordSearch = false;
 
         [Tooltip("Embedding GGUF model (e.g. nomic-embed-text). Relative paths resolve under StreamingAssets.")]
         public string embeddingModelPath = "DynamicNPCs/models/nomic-embed-text-v1.5.Q8_0.gguf";

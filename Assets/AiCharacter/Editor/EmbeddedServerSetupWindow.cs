@@ -61,6 +61,17 @@ namespace DynamicNpcs.Editor
         private const string TtsGgufUrl = "https://github.com/mdj128/dynamic-npcs/releases/download/codec-v1/neutts-air-Q4_0.gguf";
         private const string TtsGgufSha256 = "bf66dc21b7588fe720cbdfeac1595e7b7c780515f8d8f1ff9a29062e4ac9119e";
         private const string TtsGgufRelative = "DynamicNPCs/models/neutts-air-Q4_0.gguf";
+
+        // nomic-embed-text-v1.5, Apache-2.0, fetched straight from the (ungated) upstream
+        // Hugging Face repo - unlike the NeuTTS backbone/codec above, this has no mirror
+        // and no pinned checksum, since it isn't a fixed artifact this package ships and
+        // verifies; only the GGUF magic bytes are checked after download (see
+        // DownloadEmbeddingGgufAsync). If you need a stronger guarantee, compute the
+        // sha256 of a known-good download yourself and compare it by hand.
+        private const string EmbeddingGgufUrl =
+            "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q8_0.gguf";
+        private const string EmbeddingGgufRelative = "DynamicNPCs/models/nomic-embed-text-v1.5.Q8_0.gguf";
+
         private const string StarterAssetsFolder = "Assets/DynamicNPCs";
         private const string DaveStarterJson = "Packages/com.mdj.dynamicnpcs/Editor/StarterVoices/dave.json";
 
@@ -68,6 +79,7 @@ namespace DynamicNpcs.Editor
         private string _status = "Idle";
         private bool _busy;
         private Vector2 _logScroll;
+        private Vector2 _embeddingLogScroll;
         private Vector2 _scroll;
 
         private GitHubRelease _release;
@@ -123,6 +135,8 @@ namespace DynamicNpcs.Editor
             DrawServerSection();
             using (new EditorGUI.DisabledScope(_busy))
                 DrawTtsSection();
+            using (new EditorGUI.DisabledScope(_busy))
+                DrawRagSection();
             EditorGUILayout.EndScrollView();
 
             EditorGUILayout.Space(6);
@@ -171,7 +185,8 @@ namespace DynamicNpcs.Editor
                 EditorGUILayout.HelpBox(
                     "'Download Everything Missing' fetches the llama-server binary, the NeuTTS backbone, " +
                     "espeak-ng and the codec decoder - roughly 1.5 GB in total. The dialogue GGUF is " +
-                    "yours to choose and is not downloaded.",
+                    "yours to choose and is not downloaded. RAG's embedding model (section 6) is optional " +
+                    "and downloaded separately, since not every project needs it.",
                     MessageType.None);
 
             using (new EditorGUILayout.HorizontalScope())
@@ -899,6 +914,161 @@ namespace DynamicNpcs.Editor
             }
             catch (OperationCanceledException) { End("Cancelled."); }
             catch (Exception e) { End("Error: " + e.Message); }
+        }
+
+        // --- 6. RAG / embeddings (optional) ---
+
+        /// <summary>
+        /// Optional, separate from the required LLM/TTS stack above: RAG lets an NPC
+        /// draw on a knowledge source (a lore book, world facts) beyond its system
+        /// prompt. Needs an embedding GGUF model for semantic search; BM25 keyword
+        /// search runs locally with no model and no server.
+        /// </summary>
+        private void DrawRagSection()
+        {
+            EditorGUILayout.Space(12);
+            EditorGUILayout.LabelField("6. RAG / Embeddings (optional)", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Retrieval-augmented generation lets an NPC draw on a knowledge source (a lore " +
+                "book, world facts) beyond its system prompt. Needs an embedding GGUF model for " +
+                "semantic search. BM25 keyword search is optional and runs locally with no model.",
+                MessageType.None);
+
+            // a) embedding model
+            string model = DynamicNpcPaths.Resolve(_settings.embeddingModelPath);
+            bool modelExists = !string.IsNullOrWhiteSpace(model) && File.Exists(model);
+            EditorGUILayout.LabelField("Embedding GGUF", string.IsNullOrWhiteSpace(_settings.embeddingModelPath) ? "(not set)" : _settings.embeddingModelPath + (modelExists ? "" : "  [missing]"));
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (!modelExists && GUILayout.Button("Download nomic-embed-text-v1.5 (Q8_0)"))
+                    _ = DownloadEmbeddingGgufAsync();
+                if (GUILayout.Button("Browse for .gguf..."))
+                    PickGguf("Choose a GGUF embedding model", p => _settings.embeddingModelPath = p);
+            }
+            if (!modelExists)
+                EditorGUILayout.HelpBox(
+                    "Downloads nomic-ai/nomic-embed-text-v1.5 (Apache-2.0) straight from the upstream " +
+                    "Hugging Face repo - no account needed. Unlike the TTS/codec downloads above this " +
+                    "is not mirrored, so only the GGUF file signature is checked, not a fixed checksum.",
+                    MessageType.None);
+
+            // b) RAG toggles
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Retrieval settings", EditorStyles.miniBoldLabel);
+            EditorGUI.BeginChangeCheck();
+            bool useRag = EditorGUILayout.ToggleLeft("Use RAG (semantic search)", _settings.useRag);
+            bool useKeyword = EditorGUILayout.ToggleLeft("Also use BM25 keyword search (hybrid)", _settings.useKeywordSearch);
+            if (EditorGUI.EndChangeCheck())
+            {
+                _settings.useRag = useRag;
+                _settings.useKeywordSearch = useKeyword;
+                EditorUtility.SetDirty(_settings);
+                AssetDatabase.SaveAssets();
+            }
+            if (useRag && !useKeyword)
+                EditorGUILayout.HelpBox(
+                    "Semantic-only: handles paraphrased questions well, but can under-match exact " +
+                    "names/numbers/rare terms. Enable hybrid to also catch those via BM25.",
+                    MessageType.None);
+
+            // c) server control
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Embedding server", EmbeddedEmbeddingServer.IsRunning
+                ? $"Running ({_settings.EmbeddedEmbeddingRootUrl})" : "Stopped");
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(!modelExists))
+                    if (GUILayout.Button("Start / Ensure Running"))
+                        _ = StartEmbeddingServerAsync();
+                if (GUILayout.Button("Stop"))
+                {
+                    EmbeddedEmbeddingServer.Shutdown();
+                    _status = "Embedding server stopped.";
+                }
+            }
+
+            string log = EmbeddedEmbeddingServer.LogText;
+            if (!string.IsNullOrEmpty(log))
+            {
+                EditorGUILayout.LabelField("Embedding server log", EditorStyles.boldLabel);
+                _embeddingLogScroll = EditorGUILayout.BeginScrollView(_embeddingLogScroll, GUILayout.MinHeight(80));
+                EditorGUILayout.TextArea(log, EditorStyles.miniLabel);
+                EditorGUILayout.EndScrollView();
+            }
+
+            // d) pointer to the actual indexing workflow, which lives on RagSourceAsset's
+            // own inspector rather than this window.
+            EditorGUILayout.Space(4);
+            EditorGUILayout.HelpBox(
+                "To index a knowledge source: create a RAG Source asset (Assets > Create > " +
+                "Dynamic NPCs > RAG Source), assign a .txt file, then use its inspector's " +
+                "'Bake Index' button. Assign the resulting source(s) to a persona's Rag Sources list.",
+                MessageType.None);
+        }
+
+        private async Task StartEmbeddingServerAsync()
+        {
+            Begin("Starting embedding llama-server...");
+            try
+            {
+                _cts = new CancellationTokenSource();
+                await EmbeddedEmbeddingServer.EnsureRunningAsync(_settings, _cts.Token);
+                End("Embedding server is running and healthy.");
+            }
+            catch (OperationCanceledException) { End("Cancelled."); }
+            catch (Exception e) { End("Error: " + e.Message); }
+        }
+
+        private async Task DownloadEmbeddingGgufAsync()
+        {
+            Begin("Downloading nomic-embed-text-v1.5 (Q8_0)...");
+            string tempPath = Path.Combine(Path.GetTempPath(), "dynamicnpcs-nomic-embed-text-v1.5.Q8_0.gguf");
+            try
+            {
+                string dest = Path.Combine(Application.streamingAssetsPath,
+                    EmbeddingGgufRelative.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(dest));
+
+                using (var req = new UnityWebRequest(EmbeddingGgufUrl, UnityWebRequest.kHttpVerbGET))
+                {
+                    req.downloadHandler = new DownloadHandlerFile(tempPath);
+                    req.SetRequestHeader("User-Agent", "DynamicNPCs-Unity");
+                    var op = req.SendWebRequest();
+                    while (!op.isDone)
+                    {
+                        EditorUtility.DisplayProgressBar("Dynamic NPCs",
+                            $"Downloading embedding model ({req.downloadedBytes / (1024 * 1024)} MB)", req.downloadProgress);
+                        await Task.Yield();
+                    }
+                    if (req.result != UnityWebRequest.Result.Success)
+                        throw new Exception($"Download failed: {req.error}");
+                }
+
+                // A GGUF starts with the magic "GGUF"; anything else is an error page.
+                using (var fs = File.OpenRead(tempPath))
+                {
+                    var magic = new byte[4];
+                    if (fs.Read(magic, 0, 4) != 4 || System.Text.Encoding.ASCII.GetString(magic) != "GGUF")
+                        throw new Exception("the download is not a GGUF file - it may have been interrupted; try again");
+                }
+
+                // No pinned checksum here (see the EmbeddingGgufUrl comment) - only the
+                // magic-byte sanity check above, unlike DownloadTtsGgufAsync/DownloadCodecAsync
+                // which verify against a known sha256 for their mirrored, fixed artifacts.
+
+                File.Copy(tempPath, dest, true);
+                _settings.embeddingModelPath = EmbeddingGgufRelative;
+                EditorUtility.SetDirty(_settings);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                End($"Embedding model downloaded to StreamingAssets/{EmbeddingGgufRelative}.");
+            }
+            catch (Exception e) { End("Error: " + e.Message); }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort temp cleanup */ }
+            }
         }
 
         /// <summary>

@@ -52,21 +52,25 @@ namespace DynamicNpcs
         private static float[] ParseEmbedding(string responseJson)
         {
             int embeddingKeyIdx = responseJson.IndexOf("\"embedding\"", StringComparison.Ordinal);
+            
             if (embeddingKeyIdx < 0)
                 throw new Exception("No 'embedding' field in response: " + Truncate(responseJson));
 
             int colonIdx = responseJson.IndexOf(':', embeddingKeyIdx);
             int firstBracket = responseJson.IndexOf('[', colonIdx);
+
             if (firstBracket < 0)
                 throw new Exception("Malformed 'embedding' field: " + Truncate(responseJson));
 
             // Is the next non-whitespace char after the opening bracket another
             // bracket? If so this is the nested form [[ ... ]]; step in one level.
             int innerStart = firstBracket + 1;
+
             while (innerStart < responseJson.Length && char.IsWhiteSpace(responseJson[innerStart]))
                 innerStart++;
 
             int arrayStart, arrayEnd;
+
             if (innerStart < responseJson.Length && responseJson[innerStart] == '[')
             {
                 arrayStart = innerStart + 1;
@@ -84,6 +88,7 @@ namespace DynamicNpcs
             string numbersCsv = responseJson.Substring(arrayStart, arrayEnd - arrayStart);
             string[] parts = numbersCsv.Split(',');
             var result = new float[parts.Length];
+
             for (int i = 0; i < parts.Length; i++)
             {
                 if (!float.TryParse(
@@ -93,6 +98,7 @@ namespace DynamicNpcs
                         out result[i]))
                     throw new Exception($"Could not parse embedding value '{parts[i]}' in: {Truncate(responseJson)}");
             }
+
             return result;
         }
 
